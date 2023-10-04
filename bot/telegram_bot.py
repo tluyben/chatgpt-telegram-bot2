@@ -254,12 +254,13 @@ class ChatGPTTelegramBot:
         """
         Transcribe audio messages.
         """
+        print("transcribing")
         if not self.config['enable_transcription'] or not await self.check_allowed_and_within_budget(update, context):
             return
 
-        if is_group_chat(update) and self.config['ignore_group_transcriptions']:
-            logging.info(f'Transcription coming from group chat, ignoring...')
-            return
+        # if is_group_chat(update) and self.config['ignore_group_transcriptions']:
+        #     logging.info(f'Transcription coming from group chat, ignoring...')
+        #     return
 
         chat_id = update.effective_chat.id
         filename = update.message.effective_attachment.file_unique_id
@@ -374,6 +375,7 @@ class ChatGPTTelegramBot:
         """
         React to incoming messages and respond accordingly.
         """
+        print("prompting")
         if update.edited_message or not update.message or update.message.via_bot:
             return
 
@@ -386,6 +388,8 @@ class ChatGPTTelegramBot:
         user_id = update.message.from_user.id
         prompt = message_text(update.message)
         self.last_message[chat_id] = prompt
+
+        print(is_group_chat(update), update)
 
         if is_group_chat(update):
             trigger_keyword = self.config['group_trigger_keyword']
