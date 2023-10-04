@@ -27,7 +27,7 @@ class ChatGPTTelegramBot:
     Class representing a ChatGPT Telegram Bot.
     """
 
-    def __init__(self, config: dict, openai: OpenAIHelper):
+    def __init__(self, config: dict, openai: OpenAIHelper, openai_config: dict):
         """
         Initializes the bot with the given configuration and GPT bot object.
         :param config: A dictionary containing the bot configuration
@@ -35,6 +35,7 @@ class ChatGPTTelegramBot:
         """
         self.config = config
         self.openai = openai
+        self.openai_config = openai_config
         bot_language = self.config['bot_language']
         self.commands = [
             BotCommand(command='help', description=localized_text('help_description', bot_language)),
@@ -782,14 +783,14 @@ class ChatGPTTelegramBot:
         await application.bot.set_my_commands(self.commands)
 
     async def switch_gpt4(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        self.openai.model = "gpt-4"
+        self.openai_config.model = "gpt-4"
         await update.effective_message.reply_text(
             message_thread_id=get_thread_id(update),
             text=localized_text('reset_done', self.config['bot_language'])
         )
 
     async def switch_gpt3(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        self.openai.model = "gpt-3.5-turbo"
+        self.openai_config.model = "gpt-3.5-turbo"
         await update.effective_message.reply_text(
             message_thread_id=get_thread_id(update),
             text=localized_text('reset_done', self.config['bot_language'])
@@ -815,7 +816,7 @@ class ChatGPTTelegramBot:
         application.add_handler(CommandHandler('resend', self.resend))
         application.add_handler(CommandHandler('gpt4', self.switch_gpt4))
         application.add_handler(CommandHandler('gpt3', self.switch_gpt3))
-        
+
         application.add_handler(CommandHandler(
             'chat', self.prompt, filters=filters.ChatType.GROUP | filters.ChatType.SUPERGROUP)
         )
