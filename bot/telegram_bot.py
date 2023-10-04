@@ -370,6 +370,12 @@ class ChatGPTTelegramBot:
                     os.remove(filename)
 
         await wrap_with_indicator(update, context, _execute, constants.ChatAction.TYPING)
+    
+    async def default_prompt(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        self.prompt(update, context)
+
+    async def gpt4_prompt(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        self.prompt(update, context)
 
     async def prompt(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
@@ -775,6 +781,20 @@ class ChatGPTTelegramBot:
         await application.bot.set_my_commands(self.group_commands, scope=BotCommandScopeAllGroupChats())
         await application.bot.set_my_commands(self.commands)
 
+    async def switch_gpt4(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        self.openai.model = "gpt-4"
+        await update.effective_message.reply_text(
+            message_thread_id=get_thread_id(update),
+            text=localized_text('reset_done', self.config['bot_language'])
+        )
+
+    async def switch_gpt3(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        self.openai.model = "gpt-3.5-turbo"
+        await update.effective_message.reply_text(
+            message_thread_id=get_thread_id(update),
+            text=localized_text('reset_done', self.config['bot_language'])
+        )
+
     def run(self):
         """
         Runs the bot indefinitely until the user presses Ctrl+C
@@ -793,6 +813,9 @@ class ChatGPTTelegramBot:
         application.add_handler(CommandHandler('start', self.help))
         application.add_handler(CommandHandler('stats', self.stats))
         application.add_handler(CommandHandler('resend', self.resend))
+        application.add_handler(CommandHandler('gpt4', self.switch_gpt4))
+        application.add_handler(CommandHandler('gpt3', self.switch_gpt3))
+        
         application.add_handler(CommandHandler(
             'chat', self.prompt, filters=filters.ChatType.GROUP | filters.ChatType.SUPERGROUP)
         )

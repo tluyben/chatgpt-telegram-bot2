@@ -97,6 +97,7 @@ class OpenAIHelper:
         self.plugin_manager = plugin_manager
         self.conversations: dict[int: list] = {}  # {chat_id: history}
         self.last_updated: dict[int: datetime] = {}  # {chat_id: last_update_timestamp}
+        self.model_used: dict[int: str] = {}  # {chat_id: model_used}
 
     def get_conversation_stats(self, chat_id: int) -> tuple[int, int]:
         """
@@ -228,6 +229,7 @@ class OpenAIHelper:
                     logging.warning(f'Error while summarising chat history: {str(e)}. Popping elements instead...')
                     self.conversations[chat_id] = self.conversations[chat_id][-self.config['max_history_size']:]
 
+            print("Using model: " + self.config['model'])
             common_args = {
                 'model': self.config['model'],
                 'messages': self.conversations[chat_id],
