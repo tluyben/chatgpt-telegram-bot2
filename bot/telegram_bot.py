@@ -783,14 +783,14 @@ class ChatGPTTelegramBot:
         await application.bot.set_my_commands(self.commands)
 
     async def switch_gpt4(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        self.openai_config.model = "gpt-4"
+        self.openai_config['model'] = "gpt-4"
         await update.effective_message.reply_text(
             message_thread_id=get_thread_id(update),
             text=localized_text('reset_done', self.config['bot_language'])
         )
 
     async def switch_gpt3(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        self.openai_config.model = "gpt-3.5-turbo"
+        self.openai_config['model'] = "gpt-3.5-turbo"
         await update.effective_message.reply_text(
             message_thread_id=get_thread_id(update),
             text=localized_text('reset_done', self.config['bot_language'])
