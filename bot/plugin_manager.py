@@ -14,6 +14,7 @@ from plugins.deepl import DeeplTranslatePlugin
 from plugins.worldtimeapi import WorldTimeApiPlugin
 from plugins.whois_ import WhoisPlugin
 from plugins.webshot import WebshotPlugin
+from plugins.github import GithubPlugin
 
 
 class PluginManager:
@@ -38,6 +39,7 @@ class PluginManager:
             'gtts_text_to_speech': GTTSTextToSpeech,
             'whois': WhoisPlugin,
             'webshot': WebshotPlugin,
+            'github': GithubPlugin
         }
         self.plugins = [plugin_mapping[plugin]() for plugin in enabled_plugins if plugin in plugin_mapping]
 
