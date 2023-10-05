@@ -1,4 +1,7 @@
+import subprocess
 import json
+import os
+import asyncio
 
 from plugins.gtts_text_to_speech import GTTSTextToSpeech
 from plugins.dice import DicePlugin
@@ -23,6 +26,7 @@ class PluginManager:
     """
 
     def __init__(self, config):
+        self.config = config
         enabled_plugins = config.get('plugins', [])
         plugin_mapping = {
             'wolfram': WolframAlphaPlugin,
@@ -43,30 +47,155 @@ class PluginManager:
         }
         self.plugins = [plugin_mapping[plugin]() for plugin in enabled_plugins if plugin in plugin_mapping]
 
+    def get_dynamic_plugins(self):
+        """
+        Return the list of dynamic plugins
+        """
+        dynplugins = []
+        if self.config['dynamic_plugins']:
+             with open('./bot/dynamic_plugins.json', 'r') as file:
+                dynplugins = json.load(file)
+        return dynplugins
+    
+    def get_dynamic_plugin_spec(self, plugin_name):
+        """
+        Return the spec of a dynamic plugin
+        """
+        path = './bot/dynplugins/'+plugin_name
+        if not os.path.exists(path):
+            return None
+        output = subprocess.check_output([path, '--help'])
+        output_str = output.decode('utf-8')
+        data = json.loads(output_str)
+        return data 
+    
+    def get_dynamic_plugin_source_name(self, plugin_name):
+        """
+        Return the spec of a dynamic plugin
+        """
+        path = './bot/dynplugins/'+plugin_name
+        if not os.path.exists(path):
+            return None
+        output = subprocess.check_output([path, '--name'])
+        output_str = output.decode('utf-8')
+        return output_str.strip()
+    
+    def get_function_to_plugin_mapping(self): 
+        """
+        Return the mapping of functions to plugins
+        """
+        mapping = {}
+        for plugin in self.plugins:
+            for spec in plugin.get_spec():
+                mapping[spec['name']] = {"type": "static", "name": plugin.get_source_name(), "file": "d/c", "plugin": plugin}
+        if self.config['dynamic_plugins']:
+            # append the specs of the dynamic plugins
+            dynplugins = self.get_dynamic_plugins()
+            for plugin_name in dynplugins:
+                for func in self.get_dynamic_plugin_spec(plugin_name):
+                    mapping[func['name']] = {"type": "dynamic", "name": self.get_dynamic_plugin_source_name(plugin_name), "file": plugin_name,"plugin": None}
+        return mapping 
+
+    def get_plugin_by_function_name(self, function_name):
+        """
+        Return the plugin that has the function with the given name
+        """
+        mapping = self.get_function_to_plugin_mapping()
+        if function_name in mapping:
+            return mapping[function_name]
+        return None
+
     def get_functions_specs(self):
         """
         Return the list of function specs that can be called by the model
         """
-        return [spec for specs in map(lambda plugin: plugin.get_spec(), self.plugins) for spec in specs]
+        the_specs = [spec for specs in map(lambda plugin: plugin.get_spec(), self.plugins) for spec in specs]
+        if self.config['dynamic_plugins']:
+            # append the specs of the dynamic plugins
+            dynplugins = self.get_dynamic_plugins()
+            for plugin_name in dynplugins:
+                for func in self.get_dynamic_plugin_spec(plugin_name):
+                    the_specs.append(func)
+        return the_specs
+
+
 
     async def call_function(self, function_name, arguments):
         """
         Call a function based on the name and parameters provided
         """
-        plugin = self.__get_plugin_by_function_name(function_name)
+        #plugin = self.__get_plugin_by_function_name(function_name)
+        plugin = self.get_plugin_by_function_name(function_name)
         if not plugin:
             return json.dumps({'error': f'Function {function_name} not found'})
-        return json.dumps(await plugin.execute(function_name, **json.loads(arguments)), default=str)
+        
+        if plugin["type"] == "static":
+            return json.dumps(await plugin.execute(function_name, **json.loads(arguments)), default=str)
+        else: 
+            # dynamic plugin
+            path = './bot/dynplugins/'+plugin["file"]
+            if not os.path.exists(path):
+                return json.dumps({'error': f'Function {function_name} not found'})
+            output = subprocess.check_output([path, json.dumps(arguments).strip()])
+            output_str = output.decode('utf-8')
+            return output_str.strip()
 
     def get_plugin_source_name(self, function_name) -> str:
         """
         Return the source name of the plugin
         """
-        plugin = self.__get_plugin_by_function_name(function_name)
+
+        plugin = self.get_plugin_by_function_name(function_name)
+
+        #plugin = self.__get_plugin_by_function_name(function_name)
         if not plugin:
             return ''
-        return plugin.get_source_name()
+        return plugin["name"]
 
-    def __get_plugin_by_function_name(self, function_name):
-        return next((plugin for plugin in self.plugins
-                     if function_name in map(lambda spec: spec.get('name'), plugin.get_spec())), None)
+    # def __get_plugin_by_function_name(self, function_name):
+    #     return next((plugin for plugin in self.plugins
+    #                  if function_name in map(lambda spec: spec.get('name'), plugin.get_spec())), None)
+
+
+async def testing():
+    # instantiate the plugin manager
+    plugin_manager = PluginManager({"plugins": ["weather", "webshot"], "dynamic_plugins": True})
+
+    # get the normal plugin specs; 
+    specs = plugin_manager.get_functions_specs()
+    print(json.dumps(specs, indent=4))
+
+    # get the list of dynamic plugins
+    dynplugins = plugin_manager.get_dynamic_plugins()
+    print(dynplugins)
+
+    # get the source name of a dynamic plugin
+    source_name = plugin_manager.get_dynamic_plugin_source_name(dynplugins[0])
+    print("name", source_name)
+
+    source_name = plugin_manager.get_plugin_source_name("hello_world")
+    print("name", source_name)
+
+    # get the spec of a dynamic plugin
+    spec = plugin_manager.get_dynamic_plugin_spec(dynplugins[0])
+    print(spec)
+
+    # check for none existing 
+    source_name = plugin_manager.get_dynamic_plugin_source_name('soepkip')
+    if source_name is None:
+        print('source_name is None')
+
+    # get mappings; 
+    mapping = plugin_manager.get_function_to_plugin_mapping()
+    print(mapping)
+
+    # call a function
+    result = await plugin_manager.call_function("hello_world", {"name": "John"})
+    print(result)
+
+if __name__ == '__main__':
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(testing())
+   
+   

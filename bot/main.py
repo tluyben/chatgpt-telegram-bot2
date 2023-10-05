@@ -84,10 +84,13 @@ def main():
         'image_prices': [float(i) for i in os.environ.get('IMAGE_PRICES', "0.016,0.018,0.02").split(",")],
         'transcription_price': float(os.environ.get('TRANSCRIPTION_PRICE', 0.006)),
         'bot_language': os.environ.get('BOT_LANGUAGE', 'en'),
+        'dynamic_commands': os.environ.get('DYNAMIC_COMMANDS', 'false').lower() == 'true',
+
     }
 
     plugin_config = {
-        'plugins': os.environ.get('PLUGINS', '').split(',')
+        'plugins': os.environ.get('PLUGINS', '').split(','),        
+        'dynamic_plugins': os.environ.get('DYNAMIC_PLUGINS', 'false').lower() == 'true',
     }
 
     # Setup and run ChatGPT and Telegram bot
