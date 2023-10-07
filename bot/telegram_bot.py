@@ -20,6 +20,7 @@ from utils import is_group_chat, get_thread_id, message_text, wrap_with_indicato
     cleanup_intermediate_files
 from openai_helper import OpenAIHelper, localized_text
 from usage_tracker import UsageTracker
+from plugin_manager import PluginManager
 
 
 class ChatGPTTelegramBot:
@@ -27,7 +28,7 @@ class ChatGPTTelegramBot:
     Class representing a ChatGPT Telegram Bot.
     """
 
-    def __init__(self, config: dict, openai: OpenAIHelper, openai_config: dict):
+    def __init__(self, config: dict, openai: OpenAIHelper, openai_config: dict, plugin_manager: PluginManager):
         """
         Initializes the bot with the given configuration and GPT bot object.
         :param config: A dictionary containing the bot configuration
@@ -35,6 +36,7 @@ class ChatGPTTelegramBot:
         """
         self.config = config
         self.openai = openai
+        self.plugin_manager = plugin_manager
         self.openai_config = openai_config
         bot_language = self.config['bot_language']
         self.commands = [
@@ -55,6 +57,10 @@ class ChatGPTTelegramBot:
         self.usage = {}
         self.last_message = {}
         self.inline_queries_cache = {}
+
+
+    async def dynhelp(self, update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+        await update.message.reply_text(self.plugin_manager.get_dynamic_plugins_as_text(), disable_web_page_preview=True)
 
     async def help(self, update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
         """
@@ -383,6 +389,26 @@ class ChatGPTTelegramBot:
         React to incoming messages and respond accordingly.
         """
         print("prompting")
+
+        # split the prompt and get the first word stripped; 
+        # this is the command that will be used to determine the plugin to use
+        prompt = message_text(update.message)
+        if prompt is None or prompt == '':
+            return
+        dynfunc = prompt.split(' ', 1)
+        if dynfunc is None or dynfunc == '':
+            return
+        dynfunc = dynfunc[0].strip()
+        # check if this is a dynamic function; 
+        # if so, execute it and return
+        if self.plugin_manager.is_dynamic_plugin(dynfunc):
+            # take the part of the prompt with the function name removed
+            prompt = prompt[len(dynfunc):].strip()
+            result = self.plugin_manager.call_cli_function(dynfunc, prompt)
+            await update.message.reply_text(result, disable_web_page_preview=True)
+            return
+        
+
         if update.edited_message or not update.message or update.message.via_bot:
             return
 
@@ -393,7 +419,7 @@ class ChatGPTTelegramBot:
             f'New message received from user {update.message.from_user.name} (id: {update.message.from_user.id})')
         chat_id = update.effective_chat.id
         user_id = update.message.from_user.id
-        prompt = message_text(update.message)
+        #prompt = message_text(update.message)
         self.last_message[chat_id] = prompt
 
         print(is_group_chat(update), update)
@@ -816,6 +842,7 @@ class ChatGPTTelegramBot:
         application.add_handler(CommandHandler('resend', self.resend))
         application.add_handler(CommandHandler('gpt4', self.switch_gpt4))
         application.add_handler(CommandHandler('gpt3', self.switch_gpt3))
+        application.add_handler(CommandHandler('dynhelp', self.dynhelp))
 
         application.add_handler(CommandHandler(
             'chat', self.prompt, filters=filters.ChatType.GROUP | filters.ChatType.SUPERGROUP)

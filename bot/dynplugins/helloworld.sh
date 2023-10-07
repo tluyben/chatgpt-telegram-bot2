@@ -24,10 +24,20 @@ if [ "$1" == "--name" ]; then
     exit 0
 fi
 
+if [ "$1" == "--cli-help" ]; then 
+    echo "HelloWorld: Print Hello World or Hello <name>. Usage: hello_world <name>."
+    exit
+fi
 
-if [ -z "$1" ]; then
+if [ "$1" == "--cli" ]; then 
+    name=$2
+else 
+    name=$(echo $1 | jq -r '.name') 
+fi
+
+
+if [ -z "$name" ]; then
     echo "Hello world!"
 else
-    name=$(echo $1 | jq -r '.name')
     echo "Hello $name!"
 fi
