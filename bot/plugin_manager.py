@@ -192,7 +192,8 @@ class PluginManager:
             path = './bot/dynplugins/'+plugin["file"]
             if not os.path.exists(path):
                 return json.dumps({'error': f'Function {function_name} not found'})
-            output = subprocess.check_output([path, json.dumps(arguments).strip()])
+            cmd = [path, json.dumps(json.loads(arguments)).strip()]
+            output = subprocess.check_output(cmd)
             output_str = output.decode('utf-8')
             return json.dumps(output_str.strip())
 

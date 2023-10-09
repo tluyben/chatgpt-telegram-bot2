@@ -29,10 +29,11 @@ if [ "$1" == "--cli-help" ]; then
     exit
 fi
 
+
 if [ "$1" == "--cli" ]; then 
     name=$2
 else 
-    name=$(echo $1 | jq -r '.name') 
+    name=$(echo $@ | jq -r '.name') 
 fi
 
 

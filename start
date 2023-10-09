@@ -1,0 +1,11 @@
+#!/bin/bash
+
+cd /app
+
+pip install -r requirements.txt --no-cache-dir
+
+while true
+do
+ python bot/main.py 
+done
+
