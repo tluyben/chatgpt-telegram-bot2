@@ -186,7 +186,7 @@ class PluginManager:
             return json.dumps({'error': f'Function {function_name} not found'})
         
         if plugin["type"] == "static":
-            return json.dumps(await plugin.execute(function_name, **json.loads(arguments)), default=str)
+            return json.dumps(await plugin["plugin"].execute(function_name, **json.loads(arguments)), default=str)
         else: 
             # dynamic plugin
             path = './bot/dynplugins/'+plugin["file"]
